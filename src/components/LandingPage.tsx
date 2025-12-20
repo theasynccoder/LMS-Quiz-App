@@ -87,6 +87,45 @@ export function LandingPage({ onCreateQuiz }: LandingPageProps) {
             <Sparkles size={28} />
           </button>
 
+          {/* External AI buttons */}
+          <div className="flex items-center justify-center gap-4 mb-12">
+            <a
+              href="https://learnai.aftabmadni.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 rounded-xl text-white text-lg inline-flex items-center gap-3 transform transition-transform duration-200 shadow-md hover:scale-105 hover:shadow-xl"
+              style={{
+                background: 'linear-gradient(90deg, #06B6D4, #3B82F6)',
+              }}
+            >
+              LearnAI
+            </a>
+
+            <a
+              href="https://edunovaai.aftabmadni.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 rounded-xl text-white text-lg inline-flex items-center gap-3 transform transition-transform duration-200 shadow-md hover:scale-105 hover:shadow-xl"
+              style={{
+                background: 'linear-gradient(90deg, #7C3AED, #EC4899)',
+              }}
+            >
+              EduNovaAI
+            </a>
+
+            <a
+              href="https://edupluse.aftabmadni.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 rounded-xl text-white text-lg inline-flex items-center gap-3 transform transition-transform duration-200 shadow-md hover:scale-105 hover:shadow-xl"
+              style={{
+                background: 'linear-gradient(90deg, #10B981, #06B6D4)',
+              }}
+            >
+              EduPluse
+            </a>
+          </div>
+
           {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div className="feature-card bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
