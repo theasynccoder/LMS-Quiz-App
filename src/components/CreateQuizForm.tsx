@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { X, Loader2, ArrowLeft } from 'lucide-react';
@@ -19,6 +20,7 @@ export function CreateQuizForm({ onGenerateQuiz, isLoading, onBack }: CreateQuiz
     category: '',
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -39,9 +41,9 @@ export function CreateQuizForm({ onGenerateQuiz, isLoading, onBack }: CreateQuiz
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setErrorMsg(null);
     if (!formData.courseName || !formData.category) {
-      alert('Please fill in Course Name and Category');
+      setErrorMsg('Please fill in Course Name and Category');
       return;
     }
 
@@ -54,32 +56,29 @@ export function CreateQuizForm({ onGenerateQuiz, isLoading, onBack }: CreateQuiz
         numberOfQuestions: parseInt(formData.numberOfQuestions) || 5,
         includeVideo: formData.includeVideo,
         difficultyLevel: formData.difficultyLevel,
-        category: formData.category,
+        category: formData.category.split(',')[0].trim(), // Use only the first category for now
       };
 
       // Generate quiz questions
       const questions = await generateQuestions(config);
       onGenerateQuiz(config, questions);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating quiz:', error);
-      alert('Failed to generate quiz. Please try again.');
+      setErrorMsg(error?.message || 'Failed to generate quiz. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
   const generateQuestions = async (config: QuizConfig): Promise<Question[]> => {
-    // Using mock questions for now
-    // To enable API integration, replace 'YOUR_API_KEY_HERE' with your actual Gemini API key
-    
-    const apiKey = 'AIzaSyAezHHzqnT-UfYVFFZnK3_50vlgzGU4WZA'; // Replace with your actual API key
-    const useAPI = apiKey !== 'YOUR_API_KEY_HERE'; // Only use API if key is set
-    
-    if (!useAPI) {
-      // Use mock questions directly when no API key is configured
-      return generateMockQuestions(config);
+    // Use Vite env variable for Gemini API key
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+    if (!apiKey) {
+      setErrorMsg('Gemini API key is not set. Please set VITE_GEMINI_API_KEY in your .env file.');
+      throw new Error('Gemini API key is not set.');
     }
-    
+
     try {
       const prompt = `Generate ${config.numberOfQuestions} multiple-choice quiz questions about ${config.category} for a course titled "${config.courseName}". 
 Difficulty level: ${config.difficultyLevel}
@@ -126,20 +125,23 @@ Rules:
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         console.error('API Error Response:', errorData);
+        setErrorMsg(`API returned ${response.status}: ${errorData?.error?.message || 'Unknown error'}`);
         throw new Error(`API returned ${response.status}: ${errorData?.error?.message || 'Unknown error'}`);
       }
 
       const data = await response.json();
-      const generatedText = data.candidates[0].content.parts[0].text;
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!generatedText) {
+        setErrorMsg('No content returned from Gemini API.');
+        throw new Error('No content returned from Gemini API.');
+      }
       console.log('API Response:', generatedText);
-      
       // Parse the generated text to extract questions
       const questions = parseAPIResponse(generatedText, config);
       return questions;
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calling external API:', error);
-      console.log('Falling back to mock questions...');
+      setErrorMsg('Failed to generate quiz from Gemini API. Using mock questions.');
       // Fallback to mock questions if API fails
       return generateMockQuestions(config);
     }
@@ -150,22 +152,22 @@ Rules:
     try {
       // Remove markdown code blocks if present
       let cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
+
       // Try to find JSON array
       const jsonMatch = cleanText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         console.log('Parsed questions:', parsed);
-        
+
         const questions = parsed.map((q: any, index: number) => {
           const options = q.options.map((opt: any) => ({
             text: opt.text || opt,
             points: opt.points !== undefined ? opt.points : (opt.isCorrect ? 1 : 0),
           }));
-          
+
           // Find which option is correct for tracking
           const correctIndex = options.findIndex((opt: any) => opt.points === 1);
-          
+
           return {
             id: index + 1,
             text: q.question || q.text,
@@ -174,15 +176,15 @@ Rules:
             correctAnswer: correctIndex >= 0 ? correctIndex : undefined,
           };
         });
-        
+
         console.log('Final questions:', questions);
         return questions;
       }
     } catch (e) {
       console.error('Failed to parse API response:', e);
     }
-    
-    console.log('Falling back to mock questions due to parse error');
+
+    setErrorMsg('Failed to parse Gemini API response. Using mock questions.');
     return generateMockQuestions(config);
   };
 
@@ -314,17 +316,23 @@ Rules:
 
             {/* Category */}
             <div>
-              <label className="text-gray-300 block mb-2">Category</label>
+              <label className="text-gray-300 block mb-2">Category <span className="text-xs text-gray-400">(Only first will be used)</span></label>
               <input
                 type="text"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="Category (Separated by Comma)"
+                placeholder="Category (e.g. Physics, Chemistry)"
                 className="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
                 required
               />
             </div>
 
+            {/* Error Message */}
+            {errorMsg && (
+              <div className="text-red-400 bg-red-900/30 border border-red-700 rounded-lg px-4 py-2 text-sm mb-2">
+                {errorMsg}
+              </div>
+            )}
             {/* Generate Button */}
             <button
               type="submit"
