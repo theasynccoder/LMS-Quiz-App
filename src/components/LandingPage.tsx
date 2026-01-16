@@ -122,7 +122,7 @@ export function LandingPage({ onCreateQuiz }: LandingPageProps) {
                 background: 'linear-gradient(90deg, #10B981, #06B6D4)',
               }}
             >
-              EduPluse
+              EduPulse
             </a>
           </div>
 
